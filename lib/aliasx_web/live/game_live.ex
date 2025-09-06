@@ -266,6 +266,21 @@ defmodule AliasxWeb.GameLive do
   end
 
   @impl true
+  def handle_event("copy_share_link", _params, socket) do
+    if socket.assigns.session_id do
+      updated_socket = 
+        socket
+        |> push_event("copy-share-link", %{
+          url: "/#{socket.assigns.session_id}", 
+          message: gettext("Game URL copied to clipboard!")
+        })
+      {:noreply, updated_socket}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  @impl true
   def handle_event("create_session", %{"difficulty" => difficulty, "target-score" => target_score, "language" => language}, socket) do
     session_id = generate_session_id()
     difficulty_atom = String.to_atom(difficulty)
@@ -278,8 +293,8 @@ defmodule AliasxWeb.GameLive do
           socket
           |> push_event("save-game-settings", %{difficulty: difficulty, target_score: target_score})
           |> push_event("save-language", %{language: language})
-          |> push_event("copy-game-url", %{url: "/game/#{session_id}", message: gettext("Game URL copied to clipboard!")})
-          |> push_navigate(to: ~p"/game/#{session_id}")
+          |> push_event("copy-game-url", %{url: "/#{session_id}", message: gettext("Game URL copied to clipboard!")})
+          |> push_navigate(to: ~p"/#{session_id}")
         {:noreply, updated_socket}
     end
   end
@@ -295,8 +310,8 @@ defmodule AliasxWeb.GameLive do
       {:ok, _session_id} ->
         updated_socket = 
           socket
-          |> push_event("copy-game-url", %{url: "/game/#{session_id}", message: gettext("Game URL copied to clipboard!")})
-          |> push_navigate(to: ~p"/game/#{session_id}")
+          |> push_event("copy-game-url", %{url: "/#{session_id}", message: gettext("Game URL copied to clipboard!")})
+          |> push_navigate(to: ~p"/#{session_id}")
         {:noreply, updated_socket}
     end
   end

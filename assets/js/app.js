@@ -210,7 +210,40 @@ function showFlashMessage(type, message) {
   }, 3000)
 }
 
+// Handle copy share link to clipboard  
+window.addEventListener("phx:copy-share-link", (e) => {
+  if (e.detail.url) {
+    const fullUrl = window.location.origin + e.detail.url
+    const message = e.detail.message || 'Game URL copied to clipboard!'
+    
+    // Copy to clipboard
+    navigator.clipboard.writeText(fullUrl).then(() => {
+      // Show success flash message
+      showFlashMessage('success', message)
+    }).catch(() => {
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea')
+      textArea.value = fullUrl
+      document.body.appendChild(textArea)
+      textArea.select()
+      document.execCommand('copy')
+      document.body.removeChild(textArea)
+      
+      showFlashMessage('success', message)
+    })
+  }
+})
 
+// Update share link display with full URL on page load
+document.addEventListener("DOMContentLoaded", () => {
+  const shareUrlText = document.getElementById('share-url-text')
+  if (shareUrlText) {
+    // Show full URL instead of just the path
+    const currentPath = window.location.pathname
+    const fullUrl = window.location.origin + currentPath
+    shareUrlText.textContent = fullUrl
+  }
+})
 
 // connect if there are any LiveViews on the page
 liveSocket.connect()

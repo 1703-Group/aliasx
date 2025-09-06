@@ -40,21 +40,27 @@
           </div>
         <% @game_state.phase == :lobby -> %>
           <!-- Lobby View -->
-          <div class="container mx-auto p-6">
+          <div class="container mx-auto p-4 md:p-6">
             <div class="text-center mb-8">
               <h1 class="text-4xl font-bold mb-2">{gettext("Alias Game Lobby")}</h1>
-              <div class="flex justify-center gap-2 mb-2">
-                <div class="badge badge-lg">
-                  {gettext("Difficulty:")} {Map.get(@game_state, :difficulty, :medium)
-                  |> Atom.to_string()
-                  |> String.capitalize()}
+              <div class="flex flex-wrap justify-center gap-2 mb-2">
+                <div class="badge badge-lg whitespace-nowrap">
+                  {case Map.get(@game_state, :difficulty, :medium) do
+                    :simple -> gettext("Simple")
+                    :easy -> gettext("Easy") 
+                    :medium -> gettext("Medium")
+                    :difficult -> gettext("Difficult")
+                    "simple" -> gettext("Simple")
+                    "easy" -> gettext("Easy")
+                    "medium" -> gettext("Medium") 
+                    "difficult" -> gettext("Difficult")
+                    _ -> gettext("Medium")
+                  end}
                 </div>
-                <div class="badge badge-lg badge-secondary">
-                  {gettext("Target:")} {Map.get(@game_state, :target_score, 30)} {gettext(
-                    "Points"
-                  )}
+                <div class="badge badge-lg badge-secondary whitespace-nowrap">
+                  {Map.get(@game_state, :target_score, 30)} {gettext("Points")}
                 </div>
-                <div class="badge badge-lg badge-accent">
+                <div class="badge badge-lg badge-accent whitespace-nowrap">
                   {case Map.get(@game_state, :language, :en) do
                     :en -> "English"
                     :ru -> "Русский"
@@ -64,13 +70,23 @@
                   end}
                 </div>
               </div>
-              <div class="text-sm opacity-75 mt-2">
-                {gettext("Share this link:")}
-                <code class="bg-base-300 px-2 py-1 rounded">/game/{@session_id}</code>
+              <div class="text-sm opacity-75 mt-2 px-4">
+                <div class="mb-1">{gettext("Share this link:")}</div>
+                <div class="flex justify-center">
+                  <button
+                    class="bg-base-300 hover:bg-base-content hover:text-base-300 px-3 py-2 rounded break-all text-xs sm:text-sm transition-colors cursor-pointer border-0 font-mono text-center max-w-xs"
+                    phx-click="copy_share_link"
+                    title={gettext("Click to copy")}
+                    id="share-link-btn"
+                    data-session-id={@session_id}
+                  >
+                    <span id="share-url-text">/{@session_id}</span>
+                  </button>
+                </div>
               </div>
             </div>
 
-            <div class="grid lg:grid-cols-2 gap-6">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
               <!-- Teams -->
               <div class="card bg-base-100 shadow-xl">
                 <div class="card-body">
@@ -259,7 +275,7 @@
           </div>
         <% Map.get(@game_state, :phase) == :playing -> %>
           <!-- Playing View -->
-          <div class="container mx-auto p-6">
+          <div class="container mx-auto p-4 md:p-6">
             <div class="text-center mb-6">
               <h1 class="text-3xl font-bold mb-2">{gettext("Round in Progress")}</h1>
 
@@ -382,7 +398,7 @@
           </div>
         <% @game_state.phase == :round_end -> %>
           <!-- Round End / Scoring View -->
-          <div class="container mx-auto p-6">
+          <div class="container mx-auto p-4 md:p-6">
             <div class="text-center mb-6">
               <h1 class="text-3xl font-bold mb-2">{gettext("Round Complete")}</h1>
               <div class="text-lg">{gettext("Score the words from this round")}</div>
@@ -454,7 +470,7 @@
           </div>
         <% @game_state.phase == :game_over -> %>
           <!-- Game Over View -->
-          <div class="container mx-auto p-6">
+          <div class="container mx-auto p-4 md:p-6">
             <div class="text-center mb-6">
               <h1 class="text-4xl font-bold mb-4">{gettext("Game Over!")}</h1>
 

@@ -314,3 +314,6 @@ msgstr ""
 # Clipboard functionality
 msgid "Game URL copied to clipboard!"
 msgstr ""
+
+msgid "Click to copy"
+msgstr ""

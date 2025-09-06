@@ -314,3 +314,6 @@ msgstr "Слушайте и угадывайте слова!"
 # Clipboard functionality
 msgid "Game URL copied to clipboard!"
 msgstr "Ссылка на игру скопирована в буфер обмена!"
+
+msgid "Click to copy"
+msgstr "Нажмите, чтобы скопировать"

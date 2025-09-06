@@ -18,7 +18,7 @@ defmodule AliasxWeb.Router do
     pipe_through :browser
 
     live "/", GameLive, :index
-    live "/game/:session_id", GameLive, :show
+    live "/:session_id", GameLive, :show
   end
 
   # Other scopes may use custom stacks.

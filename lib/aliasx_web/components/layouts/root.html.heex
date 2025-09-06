@@ -4,6 +4,10 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="csrf-token" content={get_csrf_token()} />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍿</text></svg>"
+    />
     <.live_title default="Alias X" suffix="">
       {assigns[:page_title]}
     </.live_title>
@@ -32,6 +36,32 @@
   </head>
   <body>
     {@inner_content}
+    
+<!-- Floating Home Navigation Button (hidden on home page) -->
+    <div class="fixed top-4 left-4 z-50" id="home-nav-btn">
+      <a
+        href="/"
+        class="btn btn-circle btn-primary shadow-lg"
+        title="Go Home"
+      >
+        <!-- Left arrow icon -->
+        <svg
+          class="w-6 h-6"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M15 19l-7-7 7-7"
+          >
+          </path>
+        </svg>
+      </a>
+    </div>
     
 <!-- Floating Theme Toggle Button -->
     <div class="fixed top-4 right-4 z-50">
@@ -119,6 +149,27 @@
             setTimeout(updateThemeButton, 50);
           }
         });
+      })();
+
+      // Home navigation button visibility logic
+      (() => {
+        const updateHomeNavVisibility = () => {
+          const homeNavBtn = document.getElementById('home-nav-btn');
+          if (!homeNavBtn) return;
+          
+          // Hide on home page (path is exactly "/")
+          const isHomePage = window.location.pathname === '/';
+          homeNavBtn.style.display = isHomePage ? 'none' : 'block';
+        };
+        
+        // Update visibility when page loads
+        document.addEventListener('DOMContentLoaded', updateHomeNavVisibility);
+        
+        // Update visibility on navigation changes (for LiveView navigation)
+        window.addEventListener('phx:page-loading-stop', updateHomeNavVisibility);
+        
+        // Also update on popstate (browser back/forward)
+        window.addEventListener('popstate', updateHomeNavVisibility);
       })();
     </script>
   </body>
