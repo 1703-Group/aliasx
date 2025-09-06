@@ -1,0 +1,592 @@
+<Layouts.app flash={@flash}>
+  <div
+    class="min-h-screen bg-base-200"
+    id="game-container"
+    phx-hook={if @session_id, do: "UserDataLoader", else: nil}
+  >
+    <%= if @session_id do %>
+      <!-- Game Session View -->
+      <%= cond do %>
+        <% not @nickname_set -> %>
+          <!-- Nickname Entry -->
+          <div class="hero min-h-screen">
+            <div class="hero-content text-center">
+              <div class="max-w-md">
+                <h1 class="text-5xl font-bold mb-8">{gettext("Join Game")}</h1>
+                <form
+                  phx-submit="set_nickname"
+                  class="form-control w-full max-w-sm mx-auto"
+                  phx-hook="NicknameForm"
+                  id="nickname-form"
+                >
+                  <label class="label justify-center">
+                    <span class="label-text text-center">{gettext("Enter your nickname")}</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="nickname"
+                    value={@nickname}
+                    placeholder={gettext("Your nickname")}
+                    class="input input-bordered w-full mb-4 text-center"
+                    required
+                    id="nickname-input"
+                  />
+                  <button type="submit" class="btn btn-primary w-full">
+                    {gettext("Join Game")}
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+        <% @game_state.phase == :lobby -> %>
+          <!-- Lobby View -->
+          <div class="container mx-auto p-6">
+            <div class="text-center mb-8">
+              <h1 class="text-4xl font-bold mb-2">{gettext("Alias Game Lobby")}</h1>
+              <div class="flex justify-center gap-2 mb-2">
+                <div class="badge badge-lg">
+                  {gettext("Difficulty:")} {Map.get(@game_state, :difficulty, :medium)
+                  |> Atom.to_string()
+                  |> String.capitalize()}
+                </div>
+                <div class="badge badge-lg badge-secondary">
+                  {gettext("Target:")} {Map.get(@game_state, :target_score, 30)} {gettext(
+                    "Points"
+                  )}
+                </div>
+                <div class="badge badge-lg badge-accent">
+                  {case Map.get(@game_state, :language, :en) do
+                    :en -> "English"
+                    :ru -> "Русский"
+                    "en" -> "English"
+                    "ru" -> "Русский"
+                    _ -> "English"
+                  end}
+                </div>
+              </div>
+              <div class="text-sm opacity-75 mt-2">
+                {gettext("Share this link:")}
+                <code class="bg-base-300 px-2 py-1 rounded">/game/{@session_id}</code>
+              </div>
+            </div>
+
+            <div class="grid lg:grid-cols-2 gap-6">
+              <!-- Teams -->
+              <div class="card bg-base-100 shadow-xl">
+                <div class="card-body">
+                  <h2 class="card-title">{gettext("Teams")}</h2>
+
+                  <%= for team <- Map.get(@game_state, :teams, []) do %>
+                    <div class="border rounded-lg p-4 mb-4">
+                      <div class="flex justify-between items-center mb-2">
+                        <h3 class="font-bold">{team.name}</h3>
+                        <div class="badge">{gettext("Score:")} {team.score}</div>
+                      </div>
+
+                      <div class="flex flex-wrap gap-2 mb-3">
+                        <%= for member_id <- team.members do %>
+                          <% player =
+                            Map.get(@game_state, :players, %{})
+                            |> Map.get(member_id, %{nickname: gettext("Unknown"), ready: false}) %>
+                          <% designated_explainer =
+                            if @game_state.current_explainer &&
+                                 Map.has_key?(@game_state.players, @game_state.current_explainer) do
+                              @game_state.current_explainer
+                            else
+                              # Find first member from first team who actually exists
+                              first_team = List.first(Map.get(@game_state, :teams, []))
+
+                              if first_team do
+                                Enum.find(
+                                  first_team.members,
+                                  &Map.has_key?(@game_state.players, &1)
+                                )
+                              else
+                                nil
+                              end
+                            end %>
+                          <% is_first_explainer = member_id == designated_explainer %>
+                          <div class={[
+                            "badge",
+                            if(player.ready, do: "badge-success", else: "badge-outline")
+                          ]}>
+                            <%= if is_first_explainer do %>
+                              →
+                            <% end %>
+                            {player.nickname}
+                            <%= if player.ready do %>
+                              <.icon name="hero-check" class="w-3 h-3 ml-1" />
+                            <% else %>
+                              <span class="opacity-60"></span>
+                            <% end %>
+                          </div>
+                        <% end %>
+                      </div>
+
+                      <% current_player_data =
+                        if @session_id && @user_id,
+                          do: Map.get(@game_state.players || %{}, @user_id),
+                          else: nil %>
+                      <%= unless @game_state.phase == :playing do %>
+                        <%= if (current_player_data || %{team: nil}).team == team.name do %>
+                          <button
+                            phx-click="leave_team"
+                            class="btn btn-sm btn-error btn-outline"
+                          >
+                            {gettext("Leave Team")}
+                          </button>
+                        <% else %>
+                          <button
+                            phx-click="join_team"
+                            phx-value-team={team.name}
+                            class="btn btn-sm btn-outline"
+                          >
+                            {gettext("Join Team")}
+                          </button>
+                        <% end %>
+                      <% end %>
+                    </div>
+                  <% end %>
+
+                  <div class="flex gap-2">
+                    <%= unless @game_state.phase == :playing do %>
+                      <button phx-click="join_team" phx-value-team="new" class="btn btn-primary">
+                        <.icon name="hero-plus" class="w-4 h-4" /> {gettext("Create New Team")}
+                      </button>
+                    <% else %>
+                      <div class="alert alert-info">
+                        <.icon name="hero-information-circle" class="w-6 h-6" />
+                        <span>{gettext("Team changes are locked during gameplay")}</span>
+                      </div>
+                    <% end %>
+                  </div>
+                </div>
+              </div>
+              
+<!-- Waiting Room -->
+              <div class="card bg-base-100 shadow-xl">
+                <div class="card-body">
+                  <h2 class="card-title">{gettext("Waiting Room")}</h2>
+
+                  <div class="flex flex-wrap gap-2">
+                    <%= for {player_id, player} <- Map.get(@game_state, :players, %{}) do %>
+                      <%= if player.team == nil do %>
+                        <div class="badge badge-ghost">{player.nickname}</div>
+                      <% end %>
+                    <% end %>
+                  </div>
+
+                  <div class="divider"></div>
+
+                  <div class="space-y-4">
+                    <% player =
+                      if @session_id && @user_id,
+                        do: Map.get(@game_state.players || %{}, @user_id),
+                        else: nil %>
+
+                    <%= if player && player.team do %>
+                      <button
+                        phx-click="toggle_ready"
+                        class={[
+                          "btn w-full",
+                          if(player.ready,
+                            do: "btn-success",
+                            else: "btn-primary"
+                          )
+                        ]}
+                      >
+                        <%= if player.ready do %>
+                          <.icon name="hero-check" class="w-5 h-5" /> {gettext("Ready")}!
+                        <% else %>
+                          {gettext("Ready")}?
+                        <% end %>
+                      </button>
+
+                      <%= if can_start_game?(Map.get(@game_state, :teams, []), Map.get(@game_state, :players, %{})) do %>
+                        <% designated_first_explainer =
+                          if @game_state.current_explainer &&
+                               Map.has_key?(@game_state.players, @game_state.current_explainer) do
+                            @game_state.current_explainer
+                          else
+                            first_team = List.first(@game_state.teams)
+
+                            if first_team && length(first_team.members) > 0,
+                              do:
+                                Enum.find(
+                                  first_team.members,
+                                  &Map.has_key?(@game_state.players, &1)
+                                ),
+                              else: nil
+                          end %>
+
+                        <% current_player_data = Map.get(@game_state.players || %{}, @user_id) %>
+                        <% can_user_start =
+                          @user_id == designated_first_explainer ||
+                            (!designated_first_explainer && current_player_data &&
+                               current_player_data.team && current_player_data.ready) %>
+
+                        <%= if can_user_start do %>
+                          <button phx-click="start_game" class="btn btn-accent w-full">
+                            <.icon name="hero-play" class="w-5 h-5" /> {gettext("Start Game")}
+                          </button>
+                        <% else %>
+                          <div class="text-sm opacity-75 text-center">
+                            <%= if designated_first_explainer do %>
+                              <% first_explainer =
+                                Map.get(@game_state.players, designated_first_explainer) %>
+                              <%= if first_explainer do %>
+                                {gettext("Waiting for %{name} to start the game",
+                                  name: first_explainer.nickname
+                                )}
+                              <% else %>
+                                {gettext("Any ready player can start the game")}
+                              <% end %>
+                            <% else %>
+                              {gettext("Any ready player can start the game")}
+                            <% end %>
+                          </div>
+                        <% end %>
+                      <% else %>
+                        <div class="text-sm opacity-75 text-center">
+                          {gettext("Need at least 2 players in teams, all ready")}
+                        </div>
+                      <% end %>
+                    <% end %>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        <% Map.get(@game_state, :phase) == :playing -> %>
+          <!-- Playing View -->
+          <div class="container mx-auto p-6">
+            <div class="text-center mb-6">
+              <h1 class="text-3xl font-bold mb-2">{gettext("Round in Progress")}</h1>
+
+              <div class="stats shadow mb-4">
+                <div class="stat">
+                  <div class="stat-title">{gettext("Current Team")}</div>
+                  <div class="stat-value text-lg">
+                    {gettext("Team %{number}", number: Map.get(@game_state, :current_team, 0) + 1)}
+                  </div>
+                </div>
+                <div class="stat">
+                  <div class="stat-title">{gettext("Time Left")}</div>
+                  <div class={[
+                    "stat-value text-2xl",
+                    time_class(Map.get(@game_state, :time_remaining, 0) || 0)
+                  ]}>
+                    {format_time(Map.get(@game_state, :time_remaining, 0) || 0)}
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+<!-- Team Scores -->
+            <div class="flex justify-center mb-6">
+              <div class="flex gap-4">
+                <%= for {team, idx} <- Enum.with_index(@game_state.teams) do %>
+                  <div class={[
+                    "badge badge-lg",
+                    if(idx == @game_state.current_team, do: "badge-primary", else: "badge-ghost")
+                  ]}>
+                    Team {idx + 1}: {team.score}
+                  </div>
+                <% end %>
+              </div>
+            </div>
+
+            <% # Check if user can explain - either they're the designated explainer or the explainer is missing and they're on the team %>
+            <% explainer_exists = Map.has_key?(@game_state.players, @game_state.current_explainer) %>
+            <% current_player = Map.get(@game_state.players, @user_id) %>
+            <% current_team =
+              if @game_state.current_team,
+                do: Enum.at(@game_state.teams, @game_state.current_team),
+                else: nil %>
+            <% user_on_explaining_team =
+              current_team && current_player && Enum.member?(current_team.members, @user_id) %>
+            <% can_explain =
+              @game_state.current_explainer == @user_id ||
+                (!explainer_exists && user_on_explaining_team) %>
+
+            <%= if can_explain do %>
+              <!-- Explainer View -->
+              <div class="card bg-base-100 shadow-xl">
+                <div class="card-body text-center">
+                  <h2 class="card-title justify-center">{gettext("You're explaining!")}</h2>
+
+                  <%= if @game_state.current_word do %>
+                    <div class="bg-primary text-primary-content p-8 rounded-lg mb-6">
+                      <div class="text-6xl font-bold">{@game_state.current_word}</div>
+                    </div>
+
+                    <%= if (@game_state.time_remaining || 0) > 0 do %>
+                      <div class="flex justify-center">
+                        <button
+                          phx-click="next_word"
+                          phx-value-action="next"
+                          class="btn btn-primary btn-lg"
+                        >
+                          <.icon name="hero-arrow-right" class="w-6 h-6" /> {gettext("Next")}
+                        </button>
+                      </div>
+                    <% else %>
+                      <div class="alert alert-error">
+                        <.icon name="hero-clock" class="w-6 h-6" />
+                        <span>{gettext("Time's up!")}</span>
+                      </div>
+                    <% end %>
+                  <% end %>
+                </div>
+              </div>
+            <% else %>
+              <!-- Observer View -->
+              <div class="card bg-base-100 shadow-xl">
+                <div class="card-body text-center">
+                  <h2 class="card-title justify-center">
+                    {Map.get(@game_state.players, @game_state.current_explainer, %{
+                      nickname: gettext("Unknown")
+                    }).nickname} {gettext("is explaining")}
+                  </h2>
+                  <div class="text-lg opacity-75 mb-4">
+                    {gettext("Listen and guess the words!")}
+                  </div>
+
+                  <%= if @game_state.current_word do %>
+                    <div class="bg-base-300 text-base-content p-6 rounded-lg mb-4">
+                      <div class="text-2xl font-bold">🤫</div>
+                      <div class="text-sm opacity-75 mt-2">
+                        {gettext("Word hidden - listen to the explanation!")}
+                      </div>
+                    </div>
+                  <% end %>
+                </div>
+              </div>
+            <% end %>
+            
+<!-- Words Used This Round -->
+            <%= if length(@game_state.words_used) > 0 do %>
+              <div class="card bg-base-100 shadow-xl mt-6">
+                <div class="card-body text-center">
+                  <h3 class="card-title justify-center">{gettext("Words This Round")}</h3>
+                  <div class="flex flex-col items-center gap-2 mt-4">
+                    <%= for word_data <- Enum.reverse(@game_state.words_used) do %>
+                      <div class="text-lg font-medium">
+                        {word_data.word}
+                      </div>
+                    <% end %>
+                  </div>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        <% @game_state.phase == :round_end -> %>
+          <!-- Round End / Scoring View -->
+          <div class="container mx-auto p-6">
+            <div class="text-center mb-6">
+              <h1 class="text-3xl font-bold mb-2">{gettext("Round Complete")}</h1>
+              <div class="text-lg">{gettext("Score the words from this round")}</div>
+            </div>
+            
+<!-- Team Scores -->
+            <div class="flex justify-center mb-6">
+              <div class="flex gap-4">
+                <%= for {team, idx} <- Enum.with_index(@game_state.teams) do %>
+                  <div class={[
+                    "badge badge-lg",
+                    if(idx == @game_state.current_team, do: "badge-primary", else: "badge-ghost")
+                  ]}>
+                    Team {idx + 1}: {team.score}
+                  </div>
+                <% end %>
+              </div>
+            </div>
+            
+<!-- Word Scoring -->
+            <div class="card bg-base-100 shadow-xl mb-6 max-w-2xl mx-auto">
+              <div class="card-body">
+                <h3 class="card-title justify-center">{gettext("Score Words")}</h3>
+
+                <div class="space-y-3 mt-4">
+                  <%= for {word_data, reverse_index} <- Enum.with_index(Enum.reverse(@game_state.words_used)) do %>
+                    <% actual_index = length(@game_state.words_used) - 1 - reverse_index %>
+                    <div class="flex items-center justify-between p-3 border rounded-lg">
+                      <div class="flex-1 text-center">
+                        <span class="font-semibold text-lg">{word_data.word}</span>
+                      </div>
+
+                      <div class="flex gap-2">
+                        <%= for {score, label, color} <- [{1, "+1", "btn-success"}, {0, "0", "btn-ghost"}, {-1, "-1", "btn-error"}] do %>
+                          <% is_selected = Map.get(word_data, :score) == score %>
+                          <button
+                            phx-click="score_word"
+                            phx-value-index={actual_index}
+                            phx-value-score={score}
+                            class={[
+                              "btn btn-sm",
+                              color,
+                              if(is_selected,
+                                do: "ring-2 ring-offset-2 ring-base-content",
+                                else: "btn-outline"
+                              )
+                            ]}
+                            title="Click to mark word as {label}"
+                          >
+                            <%= if is_selected do %>
+                              ✓ {label}
+                            <% else %>
+                              {label}
+                            <% end %>
+                          </button>
+                        <% end %>
+                      </div>
+                    </div>
+                  <% end %>
+                </div>
+
+                <div class="card-actions justify-center mt-6">
+                  <button phx-click="next_round" class="btn btn-primary btn-lg">
+                    {gettext("Next Round")} <.icon name="hero-arrow-right" class="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        <% @game_state.phase == :game_over -> %>
+          <!-- Game Over View -->
+          <div class="container mx-auto p-6">
+            <div class="text-center mb-6">
+              <h1 class="text-4xl font-bold mb-4">{gettext("Game Over!")}</h1>
+
+              <div class="card bg-base-100 shadow-xl">
+                <div class="card-body">
+                  <h2 class="card-title justify-center">{gettext("Final Scores")}</h2>
+
+                  <div class="space-y-2">
+                    <%= for team <- Enum.sort_by(@game_state.teams, & &1.score, :desc) do %>
+                      <div class={[
+                        "flex justify-between items-center p-4 rounded-lg",
+                        if(team.score >= @game_state.target_score,
+                          do: "bg-success text-success-content",
+                          else: "bg-base-200"
+                        )
+                      ]}>
+                        <div class="font-bold text-lg">
+                          Team {Enum.find_index(@game_state.teams, &(&1 == team)) + 1}
+                        </div>
+                        <div class="text-2xl font-bold">{team.score}</div>
+                      </div>
+                    <% end %>
+                  </div>
+
+                  <div class="card-actions justify-center mt-6">
+                    <button phx-click="start_new_game" class="btn btn-primary btn-lg">
+                      Play Again <.icon name="hero-arrow-path" class="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+      <% end %>
+    <% else %>
+      <!-- Home Screen -->
+      <div class="hero min-h-screen" phx-hook="SettingsLoader" id="settings-loader">
+        <div class="hero-content text-center">
+          <div class="max-w-md">
+            <h1 class="text-5xl font-bold mb-8">{gettext("Alias X")}</h1>
+            <p class="mb-8">
+              {gettext("Create a game session and invite your friends to play!")}
+            </p>
+
+            <form phx-submit="create_session" id="game-settings-form">
+              <div class="form-control w-48 mx-auto mb-4">
+                <label class="label justify-center">
+                  <span class="label-text">{gettext("Choose difficulty")}</span>
+                </label>
+                <select
+                  name="difficulty"
+                  class="select select-bordered"
+                  id="difficulty-select"
+                  value={@difficulty}
+                >
+                  <option value="simple" selected={@difficulty == :simple}>
+                    {gettext("Simple")}
+                  </option>
+                  <option value="easy" selected={@difficulty == :easy}>{gettext("Easy")}</option>
+                  <option value="medium" selected={@difficulty == :medium}>
+                    {gettext("Medium")}
+                  </option>
+                  <option value="difficult" selected={@difficulty == :difficult}>
+                    {gettext("Difficult")}
+                  </option>
+                </select>
+              </div>
+
+              <div class="form-control w-48 mx-auto mb-4">
+                <label class="label justify-center">
+                  <span class="label-text">{gettext("Points to win")}</span>
+                </label>
+                <select
+                  name="target-score"
+                  class="select select-bordered"
+                  id="target-score-select"
+                  value={@target_score}
+                >
+                  <option value="10" selected={@target_score == 10}>
+                    10 {gettext("Points")}
+                  </option>
+                  <option value="15" selected={@target_score == 15}>
+                    15 {gettext("Points")}
+                  </option>
+                  <option value="20" selected={@target_score == 20}>
+                    20 {gettext("Points")}
+                  </option>
+                  <option value="30" selected={@target_score == 30}>
+                    30 {gettext("Points")}
+                  </option>
+                  <option value="50" selected={@target_score == 50}>
+                    50 {gettext("Points")}
+                  </option>
+                  <option value="100" selected={@target_score == 100}>
+                    100 {gettext("Points")}
+                  </option>
+                </select>
+              </div>
+
+              <div class="form-control w-48 mx-auto mb-6">
+                <label class="label justify-center">
+                  <span class="label-text">{gettext("Language")}</span>
+                </label>
+                <select
+                  name="language"
+                  class="select select-bordered"
+                  id="language-select"
+                  phx-change="change_language"
+                  value={@language}
+                >
+                  <option value="en" selected={@language == :en}>English</option>
+                  <option value="ru" selected={@language == :ru}>Русский</option>
+                </select>
+              </div>
+
+              <button
+                type="submit"
+                class="btn btn-primary btn-lg"
+              >
+                {gettext("Create New Game")} <.icon name="hero-plus" class="w-5 h-5" />
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    <% end %>
+    
+<!-- Timer Sound Effect -->
+    <%= if @timer_sound do %>
+      <audio autoplay>
+        <source src="/sounds/timer_end.mp3" type="audio/mpeg" />
+      </audio>
+    <% end %>
+  </div>
+</Layouts.app>

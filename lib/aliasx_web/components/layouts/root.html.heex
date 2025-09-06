@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="csrf-token" content={get_csrf_token()} />
+    <.live_title default="Alias X" suffix="">
+      {assigns[:page_title]}
+    </.live_title>
+    <link phx-track-static rel="stylesheet" href={~p"/assets/css/app.css"} />
+    <script defer phx-track-static type="text/javascript" src={~p"/assets/js/app.js"}>
+    </script>
+    <script>
+      (() => {
+        const setTheme = (theme) => {
+          if (theme === "system") {
+            localStorage.removeItem("phx:theme");
+            document.documentElement.removeAttribute("data-theme");
+          } else {
+            localStorage.setItem("phx:theme", theme);
+            document.documentElement.setAttribute("data-theme", theme);
+          }
+        };
+        if (!document.documentElement.hasAttribute("data-theme")) {
+          setTheme(localStorage.getItem("phx:theme") || "system");
+        }
+        window.addEventListener("storage", (e) => e.key === "phx:theme" && setTheme(e.newValue || "system"));
+        
+        window.addEventListener("phx:set-theme", (e) => setTheme(e.target.dataset.phxTheme));
+      })();
+    </script>
+  </head>
+  <body>
+    {@inner_content}
+    
+<!-- Floating Theme Toggle Button -->
+    <div class="fixed top-4 right-4 z-50">
+      <button
+        class="btn btn-circle btn-primary shadow-lg"
+        data-phx-theme="dark"
+        phx-click={JS.dispatch("phx:set-theme")}
+        title="Toggle Dark Mode"
+        id="theme-toggle"
+      >
+        <!-- Sun icon for light mode (shown when dark mode would be activated) -->
+        <svg
+          class="w-6 h-6 theme-icon-light"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
+          >
+          </path>
+        </svg>
+        <!-- Moon icon for dark mode (shown when light mode would be activated) -->
+        <svg
+          class="w-6 h-6 theme-icon-dark"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
+          >
+          </path>
+        </svg>
+      </button>
+    </div>
+
+    <script>
+      // Theme toggle button logic
+      (() => {
+        const updateThemeButton = () => {
+          const button = document.getElementById('theme-toggle');
+          if (!button) return;
+          
+          const currentTheme = document.documentElement.getAttribute('data-theme');
+          const isDark = currentTheme === 'dark';
+          
+          // Update button data attribute for next click
+          button.dataset.phxTheme = isDark ? 'light' : 'dark';
+          
+          // Show/hide appropriate icon
+          const lightIcon = button.querySelector('.theme-icon-light');
+          const darkIcon = button.querySelector('.theme-icon-dark');
+          
+          if (isDark) {
+            lightIcon.style.display = 'block';
+            darkIcon.style.display = 'none';
+            button.title = 'Switch to Light Mode';
+          } else {
+            lightIcon.style.display = 'none';
+            darkIcon.style.display = 'block';
+            button.title = 'Switch to Dark Mode';
+          }
+        };
+        
+        // Update button when page loads
+        document.addEventListener('DOMContentLoaded', updateThemeButton);
+        
+        // Update button when theme changes
+        window.addEventListener('phx:set-theme', () => {
+          setTimeout(updateThemeButton, 50); // Small delay to let theme apply
+        });
+        
+        // Also update when storage changes (other tabs)
+        window.addEventListener('storage', (e) => {
+          if (e.key === 'phx:theme') {
+            setTimeout(updateThemeButton, 50);
+          }
+        });
+      })();
+    </script>
+  </body>
+</html>
