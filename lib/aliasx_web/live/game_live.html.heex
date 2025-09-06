@@ -47,12 +47,12 @@
                 <div class="badge badge-lg whitespace-nowrap">
                   {case Map.get(@game_state, :difficulty, :medium) do
                     :simple -> gettext("Simple")
-                    :easy -> gettext("Easy") 
+                    :easy -> gettext("Easy")
                     :medium -> gettext("Medium")
                     :difficult -> gettext("Difficult")
                     "simple" -> gettext("Simple")
                     "easy" -> gettext("Easy")
-                    "medium" -> gettext("Medium") 
+                    "medium" -> gettext("Medium")
                     "difficult" -> gettext("Difficult")
                     _ -> gettext("Medium")
                   end}

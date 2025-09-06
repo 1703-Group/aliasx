@@ -4,14 +4,13 @@ defmodule AliasxWeb.GameLive do
 
   @impl true
   def mount(params, _session, socket) do
-
     case Map.get(params, "session_id") do
       nil ->
         # Home page
         # Set default locale
         Gettext.put_locale(AliasxWeb.Gettext, "en")
-        
-        socket_with_assigns = 
+
+        socket_with_assigns =
           assign(socket,
             difficulty: :medium,
             language: :en,
@@ -23,7 +22,7 @@ defmodule AliasxWeb.GameLive do
             nickname_set: false,
             game_state: %{teams: [], players: %{}, phase: :lobby}
           )
-        
+
         {:ok, socket_with_assigns}
 
       session_id ->
@@ -37,13 +36,16 @@ defmodule AliasxWeb.GameLive do
 
             # Set locale based on game language
             game_language = Map.get(state, :language, :en)
-            locale = case game_language do
-              :en -> "en"
-              :ru -> "ru"
-              "en" -> "en"
-              "ru" -> "ru"
-              _ -> "en"
-            end
+
+            locale =
+              case game_language do
+                :en -> "en"
+                :ru -> "ru"
+                "en" -> "en"
+                "ru" -> "ru"
+                _ -> "en"
+              end
+
             Gettext.put_locale(AliasxWeb.Gettext, locale)
 
             final_socket =
@@ -60,7 +62,6 @@ defmodule AliasxWeb.GameLive do
                 creating_session: false
               )
 
-
             {:ok, final_socket}
 
           {:error, :not_found} ->
@@ -73,55 +74,76 @@ defmodule AliasxWeb.GameLive do
   end
 
   @impl true
-  def handle_event("restore_session", %{"user_id" => stored_user_id, "nickname" => nickname}, socket) do
-    IO.inspect({:restore_session_called, stored_user_id, nickname, session_id: socket.assigns.session_id}, label: "RESTORE_SESSION_DEBUG")
-    
+  def handle_event(
+        "restore_session",
+        %{"user_id" => stored_user_id, "nickname" => nickname},
+        socket
+      ) do
+    IO.inspect(
+      {:restore_session_called, stored_user_id, nickname, session_id: socket.assigns.session_id},
+      label: "RESTORE_SESSION_DEBUG"
+    )
+
     # Use the stored user_id if available, check if this user is still in the game
     if socket.assigns.session_id do
       {:ok, game_state} = GameServer.get_state(socket.assigns.session_id)
-      
-      IO.inspect({:game_state_players, Map.keys(game_state.players)}, label: "RESTORE_SESSION_DEBUG")
-      IO.inspect({:looking_for_user, stored_user_id, found: Map.has_key?(game_state.players, stored_user_id)}, label: "RESTORE_SESSION_DEBUG")
-      
+
+      IO.inspect({:game_state_players, Map.keys(game_state.players)},
+        label: "RESTORE_SESSION_DEBUG"
+      )
+
+      IO.inspect(
+        {:looking_for_user, stored_user_id,
+         found: Map.has_key?(game_state.players, stored_user_id)},
+        label: "RESTORE_SESSION_DEBUG"
+      )
+
       # Check if the stored user still exists in the game
       if Map.has_key?(game_state.players, stored_user_id) do
         IO.inspect(:user_found_in_game, label: "RESTORE_SESSION_DEBUG")
         # User still exists, restore their session
         player = Map.get(game_state.players, stored_user_id)
-        
+
         # Always rejoin the team if they had one, regardless of connected status
-        restored_state = if player.team do
-          case GameServer.rejoin_team(socket.assigns.session_id, stored_user_id, player.team) do
-            {:ok, state} -> state
-            _ -> 
-              # If rejoin fails, mark them as connected anyway
-              case GameServer.mark_connected(socket.assigns.session_id, stored_user_id) do
-                {:ok, state} -> state
-                _ -> game_state
-              end
+        restored_state =
+          if player.team do
+            case GameServer.rejoin_team(socket.assigns.session_id, stored_user_id, player.team) do
+              {:ok, state} ->
+                state
+
+              _ ->
+                # If rejoin fails, mark them as connected anyway
+                case GameServer.mark_connected(socket.assigns.session_id, stored_user_id) do
+                  {:ok, state} -> state
+                  _ -> game_state
+                end
+            end
+          else
+            # No team, just mark as connected
+            case GameServer.mark_connected(socket.assigns.session_id, stored_user_id) do
+              {:ok, state} -> state
+              _ -> game_state
+            end
           end
-        else
-          # No team, just mark as connected
-          case GameServer.mark_connected(socket.assigns.session_id, stored_user_id) do
-            {:ok, state} -> state
-            _ -> game_state
-          end
-        end
-        
+
         updated_socket =
           socket
           |> assign(:user_id, stored_user_id)
           |> assign(:nickname, player.nickname)
           |> assign(:nickname_set, true)
           |> assign(:game_state, restored_state)
-        
+
         {:noreply, updated_socket}
       else
         # User doesn't exist anymore but we have a nickname, try to join
         IO.inspect(:user_not_found_trying_nickname, label: "RESTORE_SESSION_DEBUG")
+
         if nickname && String.trim(nickname) != "" do
           # Check if nickname is taken by someone else (not including disconnected players)
-          case GameServer.check_nickname_availability(socket.assigns.session_id, String.trim(nickname)) do
+          case GameServer.check_nickname_availability(
+                 socket.assigns.session_id,
+                 String.trim(nickname)
+               ) do
             :available ->
               case GameServer.join_session(
                      socket.assigns.session_id,
@@ -142,14 +164,18 @@ defmodule AliasxWeb.GameLive do
                   # Join failed, show nickname form
                   {:noreply, socket}
               end
-              
+
             :taken_by_connected ->
               # Nickname truly taken by active player, show form
               {:noreply, socket}
-              
+
             :taken_by_disconnected ->
               # Nickname taken by disconnected player, we can reclaim it
-              case GameServer.reclaim_nickname(socket.assigns.session_id, socket.assigns.user_id, String.trim(nickname)) do
+              case GameServer.reclaim_nickname(
+                     socket.assigns.session_id,
+                     socket.assigns.user_id,
+                     String.trim(nickname)
+                   ) do
                 {:ok, state} ->
                   updated_socket =
                     socket
@@ -208,51 +234,58 @@ defmodule AliasxWeb.GameLive do
   @impl true
   def handle_event("change_language", %{"language" => language}, socket) do
     # Convert language to locale string
-    locale = case language do
-      "ru" -> "ru" 
-      "en" -> "en"
-      _ -> "en"
-    end
-    
+    locale =
+      case language do
+        "ru" -> "ru"
+        "en" -> "en"
+        _ -> "en"
+      end
+
     # Set the locale for gettext for this process
     Gettext.put_locale(AliasxWeb.Gettext, locale)
-    
+
     # Update socket assigns and force a re-render
-    updated_socket = 
+    updated_socket =
       socket
       |> assign(:language, String.to_atom(language))
       |> assign(:locale, locale)
       |> push_event("save-language", %{language: language})
-    
+
     # The LiveView will re-render with the new locale automatically
     {:noreply, updated_socket}
   end
 
   @impl true
-  def handle_event("restore_saved_settings", %{"language" => language, "difficulty" => difficulty, "target_score" => target_score}, socket) do
+  def handle_event(
+        "restore_saved_settings",
+        %{"language" => language, "difficulty" => difficulty, "target_score" => target_score},
+        socket
+      ) do
     # Only restore settings on home page
     if socket.assigns.session_id == nil do
       # Convert language to locale string and atom
-      locale = case language do
-        "ru" -> "ru"
-        "en" -> "en"
-        _ -> "en"
-      end
+      locale =
+        case language do
+          "ru" -> "ru"
+          "en" -> "en"
+          _ -> "en"
+        end
+
       language_atom = String.to_atom(language)
       difficulty_atom = String.to_atom(difficulty)
       target_score_int = String.to_integer(target_score)
-      
+
       # Set the locale for gettext for this process
       Gettext.put_locale(AliasxWeb.Gettext, locale)
-      
+
       # Update socket assigns
-      updated_socket = 
+      updated_socket =
         socket
         |> assign(:language, language_atom)
         |> assign(:locale, locale)
         |> assign(:difficulty, difficulty_atom)
         |> assign(:target_score, target_score_int)
-      
+
       {:noreply, updated_socket}
     else
       {:noreply, socket}
@@ -268,12 +301,13 @@ defmodule AliasxWeb.GameLive do
   @impl true
   def handle_event("copy_share_link", _params, socket) do
     if socket.assigns.session_id do
-      updated_socket = 
+      updated_socket =
         socket
         |> push_event("copy-share-link", %{
-          url: "/#{socket.assigns.session_id}", 
+          url: "/#{socket.assigns.session_id}",
           message: gettext("Game URL copied to clipboard!")
         })
+
       {:noreply, updated_socket}
     else
       {:noreply, socket}
@@ -281,7 +315,11 @@ defmodule AliasxWeb.GameLive do
   end
 
   @impl true
-  def handle_event("create_session", %{"difficulty" => difficulty, "target-score" => target_score, "language" => language}, socket) do
+  def handle_event(
+        "create_session",
+        %{"difficulty" => difficulty, "target-score" => target_score, "language" => language},
+        socket
+      ) do
     session_id = generate_session_id()
     difficulty_atom = String.to_atom(difficulty)
     target_score_int = String.to_integer(target_score)
@@ -289,29 +327,44 @@ defmodule AliasxWeb.GameLive do
 
     case GameServer.create_session(session_id, difficulty_atom, target_score_int, language_atom) do
       {:ok, _session_id} ->
-        updated_socket = 
+        updated_socket =
           socket
-          |> push_event("save-game-settings", %{difficulty: difficulty, target_score: target_score})
+          |> push_event("save-game-settings", %{
+            difficulty: difficulty,
+            target_score: target_score
+          })
           |> push_event("save-language", %{language: language})
-          |> push_event("copy-game-url", %{url: "/#{session_id}", message: gettext("Game URL copied to clipboard!")})
+          |> push_event("copy-game-url", %{
+            url: "/#{session_id}",
+            message: gettext("Game URL copied to clipboard!")
+          })
           |> push_navigate(to: ~p"/#{session_id}")
+
         {:noreply, updated_socket}
     end
   end
 
   # Fallback for when language is not provided (backwards compatibility)
   @impl true
-  def handle_event("create_session", %{"difficulty" => difficulty, "target-score" => target_score}, socket) do
+  def handle_event(
+        "create_session",
+        %{"difficulty" => difficulty, "target-score" => target_score},
+        socket
+      ) do
     session_id = generate_session_id()
     difficulty_atom = String.to_atom(difficulty)
     target_score_int = String.to_integer(target_score)
 
     case GameServer.create_session(session_id, difficulty_atom, target_score_int, :en) do
       {:ok, _session_id} ->
-        updated_socket = 
+        updated_socket =
           socket
-          |> push_event("copy-game-url", %{url: "/#{session_id}", message: gettext("Game URL copied to clipboard!")})
+          |> push_event("copy-game-url", %{
+            url: "/#{session_id}",
+            message: gettext("Game URL copied to clipboard!")
+          })
           |> push_navigate(to: ~p"/#{session_id}")
+
         {:noreply, updated_socket}
     end
   end
@@ -371,7 +424,8 @@ defmodule AliasxWeb.GameLive do
         {:noreply, assign(socket, game_state: state)}
 
       {:error, :no_team_changes_during_play} ->
-        {:noreply, put_flash(socket, :error, gettext("Cannot change teams during active gameplay"))}
+        {:noreply,
+         put_flash(socket, :error, gettext("Cannot change teams during active gameplay"))}
 
       {:error, _reason} ->
         {:noreply, put_flash(socket, :error, "Failed to join team")}
@@ -385,7 +439,8 @@ defmodule AliasxWeb.GameLive do
         {:noreply, assign(socket, game_state: state)}
 
       {:error, :no_team_changes_during_play} ->
-        {:noreply, put_flash(socket, :error, gettext("Cannot change teams during active gameplay"))}
+        {:noreply,
+         put_flash(socket, :error, gettext("Cannot change teams during active gameplay"))}
 
       {:error, _reason} ->
         {:noreply, put_flash(socket, :error, "Failed to leave team")}
@@ -478,15 +533,17 @@ defmodule AliasxWeb.GameLive do
 
       {:error, reason} ->
         IO.inspect({:next_round_error, reason: reason}, label: "NEXT_ROUND_DEBUG")
-        error_message = case reason do
-          :not_round_end -> "Can only start next round from round end"
-          :no_current_team -> "No current team found"
-          _ -> "Failed to start next round: #{inspect(reason)}"
-        end
+
+        error_message =
+          case reason do
+            :not_round_end -> "Can only start next round from round end"
+            :no_current_team -> "No current team found"
+            _ -> "Failed to start next round: #{inspect(reason)}"
+          end
+
         {:noreply, put_flash(socket, :error, error_message)}
     end
   end
-
 
   @impl true
   def handle_info({:game_update, state}, socket) do
@@ -525,7 +582,6 @@ defmodule AliasxWeb.GameLive do
       _ -> false
     end
   end
-
 
   defp can_start_game?(teams, players) do
     teams_with_members = Enum.filter(teams, &(length(&1.members) > 0))

@@ -30,8 +30,9 @@ const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute
 const Hooks = {
   NicknameForm: {
     mounted() {
-      // Load saved nickname from localStorage
-      const savedNickname = localStorage.getItem('aliasx_nickname')
+      // Load saved nickname from localStorage per session
+      const sessionKey = `aliasx_nickname_${window.location.pathname}`
+      const savedNickname = localStorage.getItem(sessionKey)
       if (savedNickname) {
         const input = this.el.querySelector('#nickname-input')
         if (input) {
@@ -42,7 +43,8 @@ const Hooks = {
     
     updated() {
       // Also load on updates
-      const savedNickname = localStorage.getItem('aliasx_nickname')
+      const sessionKey = `aliasx_nickname_${window.location.pathname}`
+      const savedNickname = localStorage.getItem(sessionKey)
       if (savedNickname) {
         const input = this.el.querySelector('#nickname-input')
         if (input && !input.value) {
@@ -74,11 +76,12 @@ const Hooks = {
   UserDataLoader: {
     mounted() {
       // Handle loading saved user data for game sessions
-      const savedNickname = localStorage.getItem('aliasx_nickname')
-      const sessionKey = `aliasx_user_${window.location.pathname}`
-      const savedUserId = localStorage.getItem(sessionKey)
+      const nicknameKey = `aliasx_nickname_${window.location.pathname}`
+      const savedNickname = localStorage.getItem(nicknameKey)
+      const userKey = `aliasx_user_${window.location.pathname}`
+      const savedUserId = localStorage.getItem(userKey)
       
-      console.log('UserDataLoader mounted:', { savedUserId, savedNickname, sessionKey })
+      console.log('UserDataLoader mounted:', { savedUserId, savedNickname, nicknameKey, userKey })
       
       if (savedUserId || savedNickname) {
         console.log('UserDataLoader: Sending restore_session event')
@@ -108,7 +111,8 @@ window.addEventListener("phx:page-loading-stop", _info => topbar.hide())
 // Handle save nickname event
 window.addEventListener("phx:save-nickname", (e) => {
   if (e.detail.nickname) {
-    localStorage.setItem('aliasx_nickname', e.detail.nickname)
+    const sessionKey = `aliasx_nickname_${window.location.pathname}`
+    localStorage.setItem(sessionKey, e.detail.nickname)
   }
 })
 

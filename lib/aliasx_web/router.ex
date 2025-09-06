@@ -1,6 +1,8 @@
 defmodule AliasxWeb.Router do
   use AliasxWeb, :router
 
+  import Plug.BasicAuth
+
   pipeline :browser do
     plug :accepts, ["html"]
     plug :fetch_session
@@ -26,6 +28,12 @@ defmodule AliasxWeb.Router do
   #   pipe_through :api
   # end
 
+  pipeline :dev_auth do
+    if Mix.env() != :dev do
+      plug :basic_auth, username: "admin", password: "Admin1234!"
+    end
+  end
+
   # Enable LiveDashboard in development
   if Application.compile_env(:aliasx, :dev_routes) do
     # If you want to use the LiveDashboard in production, you should put
@@ -36,7 +44,7 @@ defmodule AliasxWeb.Router do
     import Phoenix.LiveDashboard.Router
 
     scope "/dev" do
-      pipe_through :browser
+      pipe_through [:browser, :dev_auth]
 
       live_dashboard "/dashboard", metrics: AliasxWeb.Telemetry
     end

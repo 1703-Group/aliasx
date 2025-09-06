@@ -2,10 +2,14 @@ defmodule Aliasx.GameServer do
   use GenServer
   require Logger
   alias Aliasx.WordSets
-  
+
   # Cleanup configuration - remove players disconnected for more than 10 minutes
-  @cleanup_interval_ms 5 * 60 * 1000  # Run cleanup every 5 minutes
-  @disconnect_timeout_ms 10 * 60 * 1000  # Remove after 10 minutes disconnected
+  # Run cleanup every 5 minutes
+  @cleanup_interval_ms 5 * 60 * 1000
+  # Remove after 10 minutes disconnected
+  @disconnect_timeout_ms 10 * 60 * 1000
+  # Remove entire session after 1 hour of inactivity
+  @session_timeout_ms 60 * 60 * 1000
 
   def start_link(session_id) do
     GenServer.start_link(__MODULE__, session_id, name: via_tuple(session_id))
@@ -105,8 +109,11 @@ defmodule Aliasx.GameServer do
   @impl true
   def init(session_id) do
     # Schedule the first cleanup
-    cleanup_timer = Process.send_after(self(), :cleanup_disconnected_players, @cleanup_interval_ms)
-    
+    cleanup_timer =
+      Process.send_after(self(), :cleanup_disconnected_players, @cleanup_interval_ms)
+
+    current_time = DateTime.utc_now()
+
     {:ok,
      %{
        session_id: session_id,
@@ -126,7 +133,9 @@ defmodule Aliasx.GameServer do
        time_remaining: nil,
        target_score: 30,
        game_ever_started: false,
-       cleanup_timer_ref: cleanup_timer
+       cleanup_timer_ref: cleanup_timer,
+       created_at: current_time,
+       last_activity: current_time
      }}
   end
 
@@ -164,9 +173,15 @@ defmodule Aliasx.GameServer do
       {:reply, {:error, :nickname_taken}, state}
     else
       new_players =
-        Map.put(state.players, user_id, %{nickname: nickname, team: nil, ready: false, connected: true})
+        Map.put(state.players, user_id, %{
+          nickname: nickname,
+          team: nil,
+          ready: false,
+          connected: true
+        })
 
       new_state = %{state | players: new_players}
+      |> update_last_activity()
       broadcast_update(new_state)
       {:reply, {:ok, new_state}, new_state}
     end
@@ -177,15 +192,18 @@ defmodule Aliasx.GameServer do
     # Instead of removing the player completely, mark them as disconnected
     # This preserves their session for restore functionality
     player = Map.get(state.players, user_id)
-    
+
     if player do
       # Mark player as disconnected but keep their data with timestamp
       disconnect_time = DateTime.utc_now()
-      updated_player = player
-                      |> Map.put(:connected, false)
-                      |> Map.put(:disconnected_at, disconnect_time)
+
+      updated_player =
+        player
+        |> Map.put(:connected, false)
+        |> Map.put(:disconnected_at, disconnect_time)
+
       updated_players = Map.put(state.players, user_id, updated_player)
-      
+
       # Remove from team members list but keep team assignment in player data
       new_teams =
         Enum.map(state.teams, fn team ->
@@ -231,8 +249,9 @@ defmodule Aliasx.GameServer do
   def handle_call({:check_nickname_availability, nickname}, _from, state) do
     # Check if nickname exists and if the player using it is connected
     case Enum.find(state.players, fn {_id, player} -> player.nickname == nickname end) do
-      nil -> 
+      nil ->
         {:reply, :available, state}
+
       {_user_id, player} ->
         if Map.get(player, :connected, true) do
           {:reply, :taken_by_connected, state}
@@ -245,7 +264,7 @@ defmodule Aliasx.GameServer do
   @impl true
   def handle_call({:reclaim_nickname, user_id, nickname}, _from, state) do
     # Find the disconnected player with this nickname and remove them
-    {updated_players, reclaimed} = 
+    {updated_players, reclaimed} =
       Enum.reduce(state.players, {%{}, false}, fn {id, player}, {acc_players, found} ->
         if player.nickname == nickname and not Map.get(player, :connected, true) do
           # Skip this player (remove them) and mark as found
@@ -255,10 +274,17 @@ defmodule Aliasx.GameServer do
           {Map.put(acc_players, id, player), found}
         end
       end)
-    
+
     if reclaimed do
       # Add the new player with the reclaimed nickname
-      new_players = Map.put(updated_players, user_id, %{nickname: nickname, team: nil, ready: false, connected: true})
+      new_players =
+        Map.put(updated_players, user_id, %{
+          nickname: nickname,
+          team: nil,
+          ready: false,
+          connected: true
+        })
+
       new_state = %{state | players: new_players}
       broadcast_update(new_state)
       {:reply, {:ok, new_state}, new_state}
@@ -271,24 +297,25 @@ defmodule Aliasx.GameServer do
   def handle_call(:cleanup_disconnected_players, _from, state) do
     # Perform manual cleanup
     cleaned_state = perform_cleanup(state)
-    
+
     # Broadcast if any players were removed
     if map_size(state.players) != map_size(cleaned_state.players) do
       broadcast_update(cleaned_state)
     end
-    
+
     {:reply, :ok, cleaned_state}
   end
 
   @impl true
   def handle_call({:mark_connected, user_id}, _from, state) do
     player = Map.get(state.players, user_id)
-    
+
     if player do
       # Mark player as connected
       updated_players = Map.put(state.players, user_id, %{player | connected: true})
       new_state = %{state | players: updated_players}
-      
+      |> update_last_activity()
+
       broadcast_update(new_state)
       {:reply, {:ok, new_state}, new_state}
     else
@@ -323,7 +350,9 @@ defmodule Aliasx.GameServer do
           end)
 
         # Update player's team and mark as connected
-        updated_players = Map.put(state.players, user_id, %{player | team: team_name, connected: true})
+        updated_players =
+          Map.put(state.players, user_id, %{player | team: team_name, connected: true})
+
         new_state = %{state | players: updated_players, teams: updated_teams}
 
         broadcast_update(new_state)
@@ -619,8 +648,7 @@ defmodule Aliasx.GameServer do
         current_team: 0,
         current_explainer: nil,
         current_word: nil,
-        remaining_words:
-          WordSets.get_words(state.difficulty, state.language) |> Enum.shuffle(),
+        remaining_words: WordSets.get_words(state.difficulty, state.language) |> Enum.shuffle(),
         words_used: [],
         timer_ref: nil,
         timer_seconds: 60,
@@ -797,16 +825,18 @@ defmodule Aliasx.GameServer do
   def handle_info(:cleanup_disconnected_players, state) do
     # Perform cleanup and schedule next cleanup
     cleaned_state = perform_cleanup(state)
-    
+
     # Schedule next cleanup
-    cleanup_timer = Process.send_after(self(), :cleanup_disconnected_players, @cleanup_interval_ms)
+    cleanup_timer =
+      Process.send_after(self(), :cleanup_disconnected_players, @cleanup_interval_ms)
+
     new_state = %{cleaned_state | cleanup_timer_ref: cleanup_timer}
-    
+
     # Broadcast if any players were removed
     if map_size(state.players) != map_size(cleaned_state.players) do
       broadcast_update(new_state)
     end
-    
+
     {:noreply, new_state}
   end
 
@@ -914,33 +944,52 @@ defmodule Aliasx.GameServer do
 
   defp perform_cleanup(state) do
     current_time = DateTime.utc_now()
+
+    # Check if the session should be terminated due to inactivity
+    last_activity = Map.get(state, :last_activity, state.created_at || current_time)
+    session_age_ms = DateTime.diff(current_time, last_activity, :millisecond)
     
-    # Filter out players who have been disconnected for too long
-    cleaned_players = 
-      Enum.reduce(state.players, %{}, fn {user_id, player}, acc ->
-        should_remove = case Map.get(player, :connected, true) do
-          true -> false  # Keep connected players
-          false ->
-            # Check if disconnected for too long
-            case Map.get(player, :disconnected_at) do
-              nil -> false  # No disconnect timestamp, keep for safety
-              disconnect_time ->
-                time_diff_ms = DateTime.diff(current_time, disconnect_time, :millisecond)
-                time_diff_ms >= @disconnect_timeout_ms
-            end
-        end
-        
+    if session_age_ms > @session_timeout_ms do
+      Logger.info("Terminating inactive session #{state.session_id} after #{session_age_ms}ms")
+      # Terminate the session after 1 hour of inactivity
+      Process.exit(self(), :session_timeout)
+      state
+    else
+      # Filter out players who have been disconnected for too long
+      cleaned_players =
+        Enum.reduce(state.players, %{}, fn {user_id, player}, acc ->
+          should_remove =
+            case Map.get(player, :connected, true) do
+              # Keep connected players
+              true ->
+                false
+
+              false ->
+                # Check if disconnected for too long
+                case Map.get(player, :disconnected_at) do
+                  # No disconnect timestamp, keep for safety
+                  nil ->
+                    false
+
+                  disconnect_time ->
+                    time_diff_ms = DateTime.diff(current_time, disconnect_time, :millisecond)
+                  time_diff_ms >= @disconnect_timeout_ms
+              end
+          end
+
         if should_remove do
-          acc  # Don't add to the accumulator (remove player)
+          # Don't add to the accumulator (remove player)
+          acc
         else
-          Map.put(acc, user_id, player)  # Keep player
+          # Keep player
+          Map.put(acc, user_id, player)
         end
       end)
-    
+
     # If players were removed, also clean up teams
     if map_size(cleaned_players) != map_size(state.players) do
       # Update team members to remove cleaned players
-      cleaned_teams = 
+      cleaned_teams =
         Enum.map(state.teams, fn team ->
           active_members = Enum.filter(team.members, &Map.has_key?(cleaned_players, &1))
           %{team | members: active_members}
@@ -953,9 +1002,9 @@ defmodule Aliasx.GameServer do
             Enum.filter(teams, &(length(&1.members) > 0))
           end
         end)
-      
+
       # Update current explainer if they were removed
-      updated_current_explainer = 
+      updated_current_explainer =
         if Map.has_key?(cleaned_players, state.current_explainer || "") do
           state.current_explainer
         else
@@ -965,18 +1014,25 @@ defmodule Aliasx.GameServer do
             team -> List.first(team.members)
           end
         end
-      
-      %{state | 
-        players: cleaned_players, 
-        teams: cleaned_teams,
-        current_explainer: updated_current_explainer
+
+      %{
+        state
+        | players: cleaned_players,
+          teams: cleaned_teams,
+          current_explainer: updated_current_explainer
       }
     else
-      state  # No changes needed
+      # No changes needed
+      state
+    end
     end
   end
 
   defp broadcast_update(state) do
     Phoenix.PubSub.broadcast(Aliasx.PubSub, "game:#{state.session_id}", {:game_update, state})
+  end
+
+  defp update_last_activity(state) do
+    Map.put(state, :last_activity, DateTime.utc_now())
   end
 end
