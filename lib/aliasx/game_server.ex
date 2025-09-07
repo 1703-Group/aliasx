@@ -651,7 +651,7 @@ defmodule Aliasx.GameServer do
         remaining_words: WordSets.get_words(state.difficulty, state.language) |> Enum.shuffle(),
         words_used: [],
         timer_ref: nil,
-        timer_seconds: 60,
+        time_remaining: nil,
         game_ever_started: false,
         # Clear teams to allow rebuilding
         teams: []

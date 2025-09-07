@@ -546,6 +546,19 @@ defmodule AliasxWeb.GameLive do
   end
 
   @impl true
+  def handle_event("start_new_game", _params, socket) do
+    # Reset the game to lobby phase
+    case GameServer.reset_to_lobby(socket.assigns.session_id) do
+      {:ok, _state} ->
+        {:noreply, socket}
+
+      {:error, reason} ->
+        IO.inspect({:reset_game_error, reason: reason}, label: "RESET_GAME_DEBUG")
+        {:noreply, put_flash(socket, :error, "Failed to start new game")}
+    end
+  end
+
+  @impl true
   def handle_info({:game_update, state}, socket) do
     {:noreply, assign(socket, game_state: state)}
   end

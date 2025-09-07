@@ -333,7 +333,17 @@
 
                   <%= if @game_state.current_word do %>
                     <div class="bg-primary text-primary-content p-8 rounded-lg mb-6">
-                      <div class="text-6xl font-bold">{@game_state.current_word}</div>
+                      <div class={[
+                        "font-bold break-all",
+                        cond do
+                          String.length(@game_state.current_word) > 15 -> "text-2xl sm:text-3xl md:text-4xl"
+                          String.length(@game_state.current_word) > 10 -> "text-3xl sm:text-4xl md:text-5xl"
+                          String.length(@game_state.current_word) > 7 -> "text-4xl sm:text-5xl md:text-6xl"
+                          true -> "text-5xl sm:text-6xl"
+                        end
+                      ]}>
+                        {@game_state.current_word}
+                      </div>
                     </div>
 
                     <%= if (@game_state.time_remaining || 0) > 0 do %>
