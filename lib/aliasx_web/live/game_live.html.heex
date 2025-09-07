@@ -534,6 +534,7 @@
                   name="difficulty"
                   class="select select-bordered"
                   id="difficulty-select"
+                  phx-change="change_difficulty"
                   value={@difficulty}
                 >
                   <option value="simple" selected={@difficulty == :simple}>
@@ -557,6 +558,7 @@
                   name="target-score"
                   class="select select-bordered"
                   id="target-score-select"
+                  phx-change="change_target_score"
                   value={@target_score}
                 >
                   <option value="10" selected={@target_score == 10}>

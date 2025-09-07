@@ -56,20 +56,25 @@ const Hooks = {
 
   SettingsLoader: {
     mounted() {
-      // Use a small delay to ensure initial render is complete
-      setTimeout(() => {
-        // Load saved settings from localStorage and send to LiveView
-        const savedLanguage = localStorage.getItem('aliasx_language') || 'en'
-        const savedDifficulty = localStorage.getItem('aliasx_difficulty') || 'medium'
-        const savedTargetScore = localStorage.getItem('aliasx_target_score') || '30'
+      // Mark that settings have been loaded to prevent duplicate loads
+      if (!this.el.dataset.settingsLoaded) {
+        this.el.dataset.settingsLoaded = 'true'
         
-        // Send settings to LiveView
-        this.pushEvent('restore_saved_settings', {
-          language: savedLanguage,
-          difficulty: savedDifficulty,
-          target_score: savedTargetScore
-        })
-      }, 100)
+        // Use a small delay to ensure initial render is complete
+        setTimeout(() => {
+          // Load saved settings from localStorage and send to LiveView
+          const savedLanguage = localStorage.getItem('aliasx_language') || 'en'
+          const savedDifficulty = localStorage.getItem('aliasx_difficulty') || 'medium'
+          const savedTargetScore = localStorage.getItem('aliasx_target_score') || '30'
+          
+          // Send settings to LiveView
+          this.pushEvent('restore_saved_settings', {
+            language: savedLanguage,
+            difficulty: savedDifficulty,
+            target_score: savedTargetScore
+          })
+        }, 100)
+      }
     }
   },
 
@@ -128,6 +133,20 @@ window.addEventListener("phx:save-user-id", (e) => {
 window.addEventListener("phx:save-language", (e) => {
   if (e.detail.language) {
     localStorage.setItem('aliasx_language', e.detail.language)
+  }
+})
+
+// Handle save difficulty preference
+window.addEventListener("phx:save-difficulty", (e) => {
+  if (e.detail.difficulty) {
+    localStorage.setItem('aliasx_difficulty', e.detail.difficulty)
+  }
+})
+
+// Handle save target score preference
+window.addEventListener("phx:save-target-score", (e) => {
+  if (e.detail.target_score) {
+    localStorage.setItem('aliasx_target_score', e.detail.target_score)
   }
 })
 

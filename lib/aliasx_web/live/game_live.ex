@@ -256,6 +256,28 @@ defmodule AliasxWeb.GameLive do
   end
 
   @impl true
+  def handle_event("change_difficulty", %{"difficulty" => difficulty}, socket) do
+    # Update socket assigns and save to localStorage
+    updated_socket =
+      socket
+      |> assign(:difficulty, String.to_atom(difficulty))
+      |> push_event("save-difficulty", %{difficulty: difficulty})
+
+    {:noreply, updated_socket}
+  end
+
+  @impl true
+  def handle_event("change_target_score", %{"target-score" => target_score}, socket) do
+    # Update socket assigns and save to localStorage
+    updated_socket =
+      socket
+      |> assign(:target_score, String.to_integer(target_score))
+      |> push_event("save-target-score", %{target_score: target_score})
+
+    {:noreply, updated_socket}
+  end
+
+  @impl true
   def handle_event(
         "restore_saved_settings",
         %{"language" => language, "difficulty" => difficulty, "target_score" => target_score},
