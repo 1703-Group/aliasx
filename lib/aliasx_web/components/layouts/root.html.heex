@@ -46,17 +46,17 @@
       (() => {
         const setTheme = (theme) => {
           if (theme === "system") {
-            localStorage.removeItem("phx:theme");
+            sessionStorage.removeItem("phx:theme");
             document.documentElement.removeAttribute("data-theme");
           } else {
-            localStorage.setItem("phx:theme", theme);
+            sessionStorage.setItem("phx:theme", theme);
             document.documentElement.setAttribute("data-theme", theme);
           }
         };
         if (!document.documentElement.hasAttribute("data-theme")) {
-          setTheme(localStorage.getItem("phx:theme") || "system");
+          setTheme(sessionStorage.getItem("phx:theme") || "system");
         }
-        window.addEventListener("storage", (e) => e.key === "phx:theme" && setTheme(e.newValue || "system"));
+        // Note: sessionStorage doesn't trigger storage events on the same tab, so we don't need this listener
         
         window.addEventListener("phx:set-theme", (e) => setTheme(e.target.dataset.phxTheme));
       })();
@@ -84,77 +84,81 @@
     <!-- /Yandex.Metrika counter -->
   </head>
   <body>
+    <!-- Navigation Bar -->
+    <div class="navbar bg-base-100 shadow-lg" id="nav-bar">
+      <div class="navbar-start">
+        <a
+          href="/"
+          class="btn btn-ghost btn-circle"
+          title="Go Home"
+          id="home-nav-btn"
+        >
+          <!-- Left arrow icon -->
+          <svg
+            class="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M15 19l-7-7 7-7"
+            >
+            </path>
+          </svg>
+        </a>
+      </div>
+      <div class="navbar-center">
+        <span class="text-xl font-semibold">Alias Game</span>
+      </div>
+      <div class="navbar-end">
+        <button
+          class="btn btn-ghost btn-circle"
+          data-phx-theme="dark"
+          phx-click={JS.dispatch("phx:set-theme")}
+          title="Toggle Dark Mode"
+          id="theme-toggle"
+        >
+          <!-- Sun icon for light mode (shown when dark mode would be activated) -->
+          <svg
+            class="w-6 h-6 theme-icon-light"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
+            >
+            </path>
+          </svg>
+          <!-- Moon icon for dark mode (shown when light mode would be activated) -->
+          <svg
+            class="w-6 h-6 theme-icon-dark"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
+            >
+            </path>
+          </svg>
+        </button>
+      </div>
+    </div>
+    
     {@inner_content}
-    
-<!-- Floating Home Navigation Button (hidden on home page) -->
-    <div class="fixed top-4 left-4 z-50" id="home-nav-btn">
-      <a
-        href="/"
-        class="btn btn-circle btn-primary shadow-lg"
-        title="Go Home"
-      >
-        <!-- Left arrow icon -->
-        <svg
-          class="w-6 h-6"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M15 19l-7-7 7-7"
-          >
-          </path>
-        </svg>
-      </a>
-    </div>
-    
-<!-- Floating Theme Toggle Button -->
-    <div class="fixed top-4 right-4 z-50">
-      <button
-        class="btn btn-circle btn-primary shadow-lg"
-        data-phx-theme="dark"
-        phx-click={JS.dispatch("phx:set-theme")}
-        title="Toggle Dark Mode"
-        id="theme-toggle"
-      >
-        <!-- Sun icon for light mode (shown when dark mode would be activated) -->
-        <svg
-          class="w-6 h-6 theme-icon-light"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
-          >
-          </path>
-        </svg>
-        <!-- Moon icon for dark mode (shown when light mode would be activated) -->
-        <svg
-          class="w-6 h-6 theme-icon-dark"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
-          >
-          </path>
-        </svg>
-      </button>
-    </div>
 
     <script>
       // Theme toggle button logic
@@ -200,25 +204,31 @@
         });
       })();
 
-      // Home navigation button visibility logic
+      // Navigation bar visibility logic
       (() => {
-        const updateHomeNavVisibility = () => {
+        const updateNavBarVisibility = () => {
+          const navBar = document.getElementById('nav-bar');
           const homeNavBtn = document.getElementById('home-nav-btn');
-          if (!homeNavBtn) return;
+          if (!navBar) return;
           
-          // Hide on home page (path is exactly "/")
+          // Hide entire navbar on home page (path is exactly "/")
           const isHomePage = window.location.pathname === '/';
-          homeNavBtn.style.display = isHomePage ? 'none' : 'block';
+          navBar.style.display = isHomePage ? 'none' : 'flex';
+          
+          // Update home button visibility within the navbar
+          if (homeNavBtn) {
+            homeNavBtn.style.visibility = isHomePage ? 'hidden' : 'visible';
+          }
         };
         
         // Update visibility when page loads
-        document.addEventListener('DOMContentLoaded', updateHomeNavVisibility);
+        document.addEventListener('DOMContentLoaded', updateNavBarVisibility);
         
         // Update visibility on navigation changes (for LiveView navigation)
-        window.addEventListener('phx:page-loading-stop', updateHomeNavVisibility);
+        window.addEventListener('phx:page-loading-stop', updateNavBarVisibility);
         
         // Also update on popstate (browser back/forward)
-        window.addEventListener('popstate', updateHomeNavVisibility);
+        window.addEventListener('popstate', updateNavBarVisibility);
       })();
     </script>
   </body>

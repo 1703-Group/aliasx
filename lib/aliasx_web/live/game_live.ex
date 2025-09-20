@@ -27,7 +27,7 @@ defmodule AliasxWeb.GameLive do
 
       session_id ->
         # Game session page
-        # Generate a new user_id for now, will be replaced if we get one from localStorage
+        # Generate a new user_id for now, will be replaced if we get one from sessionStorage
         user_id = generate_user_id()
 
         case GameServer.get_state(session_id) do
@@ -257,7 +257,7 @@ defmodule AliasxWeb.GameLive do
 
   @impl true
   def handle_event("change_difficulty", %{"difficulty" => difficulty}, socket) do
-    # Update socket assigns and save to localStorage
+    # Update socket assigns and save to sessionStorage
     updated_socket =
       socket
       |> assign(:difficulty, String.to_atom(difficulty))
@@ -268,7 +268,7 @@ defmodule AliasxWeb.GameLive do
 
   @impl true
   def handle_event("change_target_score", %{"target-score" => target_score}, socket) do
-    # Update socket assigns and save to localStorage
+    # Update socket assigns and save to sessionStorage
     updated_socket =
       socket
       |> assign(:target_score, String.to_integer(target_score))

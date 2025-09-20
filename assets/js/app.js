@@ -30,9 +30,9 @@ const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute
 const Hooks = {
   NicknameForm: {
     mounted() {
-      // Load saved nickname from localStorage per session
+      // Load saved nickname from sessionStorage per session
       const sessionKey = `aliasx_nickname_${window.location.pathname}`
-      const savedNickname = localStorage.getItem(sessionKey)
+      const savedNickname = sessionStorage.getItem(sessionKey)
       if (savedNickname) {
         const input = this.el.querySelector('#nickname-input')
         if (input) {
@@ -44,7 +44,7 @@ const Hooks = {
     updated() {
       // Also load on updates
       const sessionKey = `aliasx_nickname_${window.location.pathname}`
-      const savedNickname = localStorage.getItem(sessionKey)
+      const savedNickname = sessionStorage.getItem(sessionKey)
       if (savedNickname) {
         const input = this.el.querySelector('#nickname-input')
         if (input && !input.value) {
@@ -62,10 +62,10 @@ const Hooks = {
         
         // Use a small delay to ensure initial render is complete
         setTimeout(() => {
-          // Load saved settings from localStorage and send to LiveView
-          const savedLanguage = localStorage.getItem('aliasx_language') || 'en'
-          const savedDifficulty = localStorage.getItem('aliasx_difficulty') || 'medium'
-          const savedTargetScore = localStorage.getItem('aliasx_target_score') || '30'
+          // Load saved settings from sessionStorage and send to LiveView
+          const savedLanguage = sessionStorage.getItem('aliasx_language') || 'en'
+          const savedDifficulty = sessionStorage.getItem('aliasx_difficulty') || 'medium'
+          const savedTargetScore = sessionStorage.getItem('aliasx_target_score') || '30'
           
           // Send settings to LiveView
           this.pushEvent('restore_saved_settings', {
@@ -82,9 +82,9 @@ const Hooks = {
     mounted() {
       // Handle loading saved user data for game sessions
       const nicknameKey = `aliasx_nickname_${window.location.pathname}`
-      const savedNickname = localStorage.getItem(nicknameKey)
+      const savedNickname = sessionStorage.getItem(nicknameKey)
       const userKey = `aliasx_user_${window.location.pathname}`
-      const savedUserId = localStorage.getItem(userKey)
+      const savedUserId = sessionStorage.getItem(userKey)
       
       console.log('UserDataLoader mounted:', { savedUserId, savedNickname, nicknameKey, userKey })
       
@@ -117,7 +117,7 @@ window.addEventListener("phx:page-loading-stop", _info => topbar.hide())
 window.addEventListener("phx:save-nickname", (e) => {
   if (e.detail.nickname) {
     const sessionKey = `aliasx_nickname_${window.location.pathname}`
-    localStorage.setItem(sessionKey, e.detail.nickname)
+    sessionStorage.setItem(sessionKey, e.detail.nickname)
   }
 })
 
@@ -125,38 +125,38 @@ window.addEventListener("phx:save-nickname", (e) => {
 window.addEventListener("phx:save-user-id", (e) => {
   if (e.detail.user_id) {
     const sessionKey = `aliasx_user_${window.location.pathname}`
-    localStorage.setItem(sessionKey, e.detail.user_id)
+    sessionStorage.setItem(sessionKey, e.detail.user_id)
   }
 })
 
 // Handle save language preference
 window.addEventListener("phx:save-language", (e) => {
   if (e.detail.language) {
-    localStorage.setItem('aliasx_language', e.detail.language)
+    sessionStorage.setItem('aliasx_language', e.detail.language)
   }
 })
 
 // Handle save difficulty preference
 window.addEventListener("phx:save-difficulty", (e) => {
   if (e.detail.difficulty) {
-    localStorage.setItem('aliasx_difficulty', e.detail.difficulty)
+    sessionStorage.setItem('aliasx_difficulty', e.detail.difficulty)
   }
 })
 
 // Handle save target score preference
 window.addEventListener("phx:save-target-score", (e) => {
   if (e.detail.target_score) {
-    localStorage.setItem('aliasx_target_score', e.detail.target_score)
+    sessionStorage.setItem('aliasx_target_score', e.detail.target_score)
   }
 })
 
 // Handle save game settings (difficulty and target score)
 window.addEventListener("phx:save-game-settings", (e) => {
   if (e.detail.difficulty) {
-    localStorage.setItem('aliasx_difficulty', e.detail.difficulty)
+    sessionStorage.setItem('aliasx_difficulty', e.detail.difficulty)
   }
   if (e.detail.target_score) {
-    localStorage.setItem('aliasx_target_score', e.detail.target_score)
+    sessionStorage.setItem('aliasx_target_score', e.detail.target_score)
   }
 })
 
