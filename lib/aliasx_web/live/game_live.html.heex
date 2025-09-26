@@ -130,6 +130,10 @@
                               →
                             <% end %>
                             {player.nickname}
+                            <% total_points = Map.get(player, :total_points, 0) %>
+                            <%= if total_points > 0 do %>
+                              <span class="ml-1 font-bold">({total_points})</span>
+                            <% end %>
                             <%= if player.ready do %>
                               <.icon name="hero-check" class="w-3 h-3 ml-1" />
                             <% else %>
@@ -187,7 +191,13 @@
                   <div class="flex flex-wrap gap-2">
                     <%= for {player_id, player} <- Map.get(@game_state, :players, %{}) do %>
                       <%= if player.team == nil do %>
-                        <div class="badge badge-ghost">{player.nickname}</div>
+                        <div class="badge badge-ghost">
+                          {player.nickname}
+                          <% total_points = Map.get(player, :total_points, 0) %>
+                          <%= if total_points > 0 do %>
+                            <span class="ml-1 font-bold">({total_points})</span>
+                          <% end %>
+                        </div>
                       <% end %>
                     <% end %>
                   </div>

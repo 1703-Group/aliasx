@@ -177,7 +177,8 @@ defmodule Aliasx.GameServer do
           nickname: nickname,
           team: nil,
           ready: false,
-          connected: true
+          connected: true,
+          total_points: 0
         })
 
       new_state = %{state | players: new_players}
@@ -282,7 +283,8 @@ defmodule Aliasx.GameServer do
           nickname: nickname,
           team: nil,
           ready: false,
-          connected: true
+          connected: true,
+          total_points: 0
         })
 
       new_state = %{state | players: new_players}
@@ -700,6 +702,20 @@ defmodule Aliasx.GameServer do
               end
             end)
 
+          # Update total_points only for the explainer who scored the points
+          updated_players_with_points =
+            state.players
+            |> Enum.map(fn {user_id, player} ->
+              # Only give points to the current explainer
+              if user_id == state.current_explainer do
+                current_total = Map.get(player, :total_points, 0)
+                {user_id, %{player | total_points: current_total + round_score}}
+              else
+                {user_id, player}
+              end
+            end)
+            |> Map.new()
+
           # Check for winner
           if new_score >= state.target_score do
             new_state = %{
@@ -709,7 +725,8 @@ defmodule Aliasx.GameServer do
                 current_word: nil,
                 words_used: [],
                 timer_ref: nil,
-                time_remaining: nil
+                time_remaining: nil,
+                players: updated_players_with_points
             }
 
             broadcast_update(new_state)
@@ -717,7 +734,7 @@ defmodule Aliasx.GameServer do
           else
             # Reset all players' ready status when returning to lobby
             reset_players =
-              state.players
+              updated_players_with_points
               |> Enum.map(fn {user_id, player} ->
                 {user_id, %{player | ready: false}}
               end)
