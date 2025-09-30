@@ -27,7 +27,7 @@
                     name="nickname"
                     value={@nickname}
                     placeholder={gettext("Your nickname")}
-                    class="input input-bordered w-full mb-4 text-center"
+                    class="input input-bordered w-full mb-4 text-center text-base"
                     required
                     id="nickname-input"
                   />
@@ -391,18 +391,9 @@
                       nickname: gettext("Unknown")
                     }).nickname} {gettext("is explaining")}
                   </h2>
-                  <div class="text-lg opacity-75 mb-4">
+                  <div class="text-lg opacity-75">
                     {gettext("Listen and guess the words!")}
                   </div>
-
-                  <%= if @game_state.current_word do %>
-                    <div class="bg-base-300 text-base-content p-6 rounded-lg mb-4">
-                      <div class="text-2xl font-bold">🤫</div>
-                      <div class="text-sm opacity-75 mt-2">
-                        {gettext("Word hidden - listen to the explanation!")}
-                      </div>
-                    </div>
-                  <% end %>
                 </div>
               </div>
             <% end %>

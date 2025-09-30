@@ -860,7 +860,24 @@ defmodule Aliasx.GameServer do
   @impl true
   def handle_info(:time_up, state) do
     if state.phase == :playing do
-      new_state = %{state | phase: :round_end, timer_ref: nil, time_remaining: 0}
+      # Add the current word to words_used before ending the round
+      updated_words_used =
+        if state.current_word do
+          word_result = %{word: state.current_word, status: :timeout, score: 1}
+          [word_result | state.words_used]
+        else
+          state.words_used
+        end
+
+      new_state = %{
+        state
+        | phase: :round_end,
+          timer_ref: nil,
+          time_remaining: 0,
+          words_used: updated_words_used,
+          current_word: nil
+      }
+
       broadcast_update(new_state)
       Phoenix.PubSub.broadcast(Aliasx.PubSub, "game:#{state.session_id}", :timer_finished)
       {:noreply, new_state}
