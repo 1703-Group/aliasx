@@ -55,7 +55,7 @@ msgstr ""
 
 #: lib/aliasx_web/live/game_live.html.heex:483
 #, elixir-autogen, elixir-format
-msgid "Difficult"
+msgid "Hard"
 msgstr ""
 
 #: lib/aliasx_web/live/game_live.html.heex:37
@@ -63,9 +63,9 @@ msgstr ""
 msgid "Difficulty:"
 msgstr ""
 
-#: lib/aliasx_web/live/game_live.html.heex:481
+#: lib/aliasx_web/live/game_live.html.heex:558
 #, elixir-autogen, elixir-format
-msgid "Easy"
+msgid "Movies & Actors"
 msgstr ""
 
 #: lib/aliasx_web/live/game_live.html.heex:14

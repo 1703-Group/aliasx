@@ -49,7 +49,7 @@ msgstr "Создайте игровую сессию и пригласите д�
 
 #: lib/aliasx_web/live/game_live.html.heex:483
 #, elixir-autogen, elixir-format
-msgid "Difficult"
+msgid "Hard"
 msgstr "Сложный"
 
 #: lib/aliasx_web/live/game_live.html.heex:37
@@ -57,10 +57,10 @@ msgstr "Сложный"
 msgid "Difficulty:"
 msgstr "Сложность:"
 
-#: lib/aliasx_web/live/game_live.html.heex:481
+#: lib/aliasx_web/live/game_live.html.heex:558
 #, elixir-autogen, elixir-format
-msgid "Easy"
-msgstr "Легкий"
+msgid "Movies & Actors"
+msgstr "Фильмы и актёры"
 
 #: lib/aliasx_web/live/game_live.html.heex:14
 #, elixir-autogen, elixir-format

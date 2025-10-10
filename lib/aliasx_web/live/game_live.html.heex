@@ -47,13 +47,13 @@
                 <div class="badge badge-lg whitespace-nowrap">
                   {case Map.get(@game_state, :difficulty, :medium) do
                     :simple -> gettext("Simple")
-                    :easy -> gettext("Easy")
                     :medium -> gettext("Medium")
-                    :difficult -> gettext("Difficult")
+                    :hard -> gettext("Hard")
+                    :movies -> gettext("Movies & Actors")
                     "simple" -> gettext("Simple")
-                    "easy" -> gettext("Easy")
                     "medium" -> gettext("Medium")
-                    "difficult" -> gettext("Difficult")
+                    "hard" -> gettext("Hard")
+                    "movies" -> gettext("Movies & Actors")
                     _ -> gettext("Medium")
                   end}
                 </div>
@@ -548,12 +548,14 @@
                   <option value="simple" selected={@difficulty == :simple}>
                     {gettext("Simple")}
                   </option>
-                  <option value="easy" selected={@difficulty == :easy}>{gettext("Easy")}</option>
                   <option value="medium" selected={@difficulty == :medium}>
                     {gettext("Medium")}
                   </option>
-                  <option value="difficult" selected={@difficulty == :difficult}>
-                    {gettext("Difficult")}
+                  <option value="hard" selected={@difficulty == :hard}>
+                    {gettext("Hard")}
+                  </option>
+                  <option value="movies" selected={@difficulty == :movies}>
+                    {gettext("Movies & Actors")}
                   </option>
                 </select>
               </div>
